@@ -1,0 +1,34 @@
+# ===== Java / Maven =====
+**/target/
+**/*.log
+
+# Maven wrapper (keep!)
+!.mvn/wrapper/maven-wrapper.jar
+
+# ===== IDEs =====
+.idea/
+*.iml
+*.ipr
+*.iws
+
+.vscode/
+*.code-workspace
+
+# ===== OS / Misc =====
+.DS_Store
+Thumbs.db
+
+# ===== Env / Secrets =====
+.env
+*.local
+*.secrets
+**/application-local.yml
+
+# ===== Testcontainers =====
+**/.testcontainers.properties
+
+# ===== Logs / Dumps =====
+logs/
+*.hprof
+hs_err_pid*
+replay_pid*
