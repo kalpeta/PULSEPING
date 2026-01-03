@@ -1,0 +1,34 @@
+name: pulseping
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pulseping-postgres
+    environment:
+      POSTGRES_USER: pulseping
+      POSTGRES_PASSWORD: pulseping
+      POSTGRES_DB: pulsepingdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - pulseping_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulseping -d pulsepingdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:4.1.1
+    container_name: pulseping-kafka
+    ports:
+      - "9092:9092"
+    healthcheck:
+      # Docker guide: scripts live in /opt/kafka/bin; this returns cluster id when broker is up
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-cluster.sh cluster-id --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  pulseping_pgdata:
