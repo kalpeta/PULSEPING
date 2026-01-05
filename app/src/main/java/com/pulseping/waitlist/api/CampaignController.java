@@ -34,9 +34,17 @@ public class CampaignController {
 
     @PostMapping("/{id}/subscribe")
     @ResponseStatus(HttpStatus.CREATED)
-    public SubscriptionResponse subscribe(@PathVariable long id, @Valid @RequestBody SubscribeRequest req) {
-        var res = service.subscribe(id, req.email());
-        return new SubscriptionResponse(res.campaignId(), res.subscriberId(), res.email(), res.createdAt());
+    public SubscriptionResponse subscribe(
+            @PathVariable long id,
+            @Valid @RequestBody SubscribeRequest req,
+            @RequestHeader(value = "X-Correlation-Id", required = false) String correlationId
+    ) {
+        String cid = (correlationId == null || correlationId.isBlank())
+                ? java.util.UUID.randomUUID().toString()
+                : correlationId;
+
+        var res = service.subscribe(id, req.email(), cid);
+        return new SubscriptionResponse(res.campaignId(), res.subscriberId(), res.email(), res.createdAt(), res.eventId());
     }
 
     @GetMapping("/{id}/subscribers")
