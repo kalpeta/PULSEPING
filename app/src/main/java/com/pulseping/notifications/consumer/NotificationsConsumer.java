@@ -15,10 +15,12 @@ import java.nio.charset.StandardCharsets;
 public class NotificationsConsumer {
 
     private final NotificationsRepository repo;
+    private final com.pulseping.provider.client.ProviderClient providerClient;
     private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
 
-    public NotificationsConsumer(NotificationsRepository repo) {
+    public NotificationsConsumer(NotificationsRepository repo, com.pulseping.provider.client.ProviderClient providerClient) {
         this.repo = repo;
+        this.providerClient = providerClient;
     }
 
     @KafkaListener(topics = "pulseping.events")
@@ -35,10 +37,34 @@ public class NotificationsConsumer {
         long campaignId = n.get("campaignId").asLong();
         long subscriberId = n.get("subscriberId").asLong();
 
-        // For B5.1, simulate “provider success”
         long messageId = repo.createMessage(campaignId, subscriberId, "WELCOME_V1");
-        repo.insertAttempt(messageId, 1, AttemptStatus.SENT, null);
-        repo.updateMessageStatus(messageId, MessageStatus.SENT);
+
+        try {
+            var req = new com.pulseping.provider.api.ProviderSendRequest(
+                    campaignId,
+                    subscriberId,
+                    n.get("email").asText(),
+                    "WELCOME_V1",
+                    correlationId,
+                    eventId
+            );
+
+            // SUCCESS path by default
+            var resp = providerClient.send(req);
+
+            if (resp.getStatusCode().is2xxSuccessful()) {
+                repo.insertAttempt(messageId, 1, AttemptStatus.SENT, null);
+                repo.updateMessageStatus(messageId, MessageStatus.SENT);
+            } else {
+                repo.insertAttempt(messageId, 1, AttemptStatus.FAILED, "PROVIDER_NON_2XX");
+                repo.updateMessageStatus(messageId, MessageStatus.FAILED);
+            }
+
+        } catch (Exception e) {
+            repo.insertAttempt(messageId, 1, AttemptStatus.FAILED, "PROVIDER_EXCEPTION");
+            repo.updateMessageStatus(messageId, MessageStatus.FAILED);
+            throw e;
+        }
 
         System.out.println("[consumer] eventType=" + eventType +
                 " eventId=" + eventId +
